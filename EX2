@@ -1,0 +1,75 @@
+import socket
+
+def download_web_page_with_output(host, path):
+    """
+    Downloads a web page using a TCP socket and prints the process.
+
+    Args:
+        host (str): The domain name of the web server (e.g., 'www.example.com').
+        path (str): The path to the resource (e.g., '/').
+    """
+    print(f"--- Starting Web Page Download ---")
+    print(f"Target: http://{host}{path}\n")
+
+    # Create a TCP/IP socket
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    try:
+        # Connect the socket to the server on port 80 (HTTP)
+        server_address = (host, 80)
+        print(f"➡️ Connecting to {host} on port 80...")
+        client_socket.connect(server_address)
+        print("✅ Connection Successful.")
+
+        # Form the HTTP GET request
+        # Host header is required for HTTP/1.1
+        # Connection: close tells the server to close the socket after the response
+        request = f"GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
+        print("\n➡️ Sending HTTP GET Request:\n" + "-"*30 + f"\n{request}" + "-"*30)
+
+        # Send the encoded request
+        client_socket.sendall(request.encode())
+
+        # Receive the response from the server
+        print("\n➡️ Receiving HTTP Response...")
+        response = b""
+        while True:
+            # Receive data in chunks of 4096 bytes
+            data = client_socket.recv(4096)
+            if not data:
+                break
+            response += data
+        
+        print("✅ Response Received.\n")
+
+        # The full response includes headers and the body
+        print("--- Full HTTP Response (Headers + Body) ---")
+        # Use errors='ignore' to prevent crashes on weird characters
+        print(response.decode(errors='ignore'))
+        
+        # The body of the webpage is after the first double newline `\r\n\r\n`
+        try:
+            header, body = response.split(b'\r\n\r\n', 1)
+            print("\n--- Extracted Web Page Content (HTML Body) ---")
+            print(body.decode(errors='ignore'))
+        except ValueError:
+            print("\nCould not separate headers from body.")
+
+
+    except socket.gaierror:
+        print(f"❌ Error: Hostname '{host}' could not be resolved.")
+    except ConnectionRefusedError:
+        print(f"❌ Error: Connection to '{host}' was refused.")
+    except Exception as e:
+        print(f"❌ An unexpected error occurred: {e}")
+    finally:
+        # Clean up the connection
+        print("\n➡️ Closing socket.")
+        client_socket.close()
+        print("--- Download Complete ---")
+
+if __name__ == "__main__":
+    # Define the target server and page
+    target_host = "example.com"
+    target_path = "/"
+    download_web_page_with_output(target_host, target_path)
